@@ -2,7 +2,8 @@
 #include <SSD1306.h>
 #include <SPI.h>
 #include <MFRC522.h>
-#include "ADNS5020.h"
+// #include "ADNS5020.h"
+#include "MCS12085.h"
 
 
 // RFID with MFRC-522
@@ -33,19 +34,21 @@
 
 #define MOUSE_SCLK 17
 #define MOUSE_SDIO 13
-#define MOUSE_NCS 25
-#define MOUSE_NRST -1 
+// #define MOUSE_NCS 25
+// #define MOUSE_NRST -1 
 
 SSD1306 display(OLED_I2C_ADDR, OLED_SDA, OLED_SCL);
 
 // Avago ADNS-5020-EN mouse sensor (optical flow), bit-banged "SPI" 
 // param: SCLK, SDIO, NCS, NRESET, CPI
-ADNS5020 mouse(MOUSE_SCLK, MOUSE_SDIO, MOUSE_NCS, MOUSE_NRST, 500);
+// ADNS5020 mouse(MOUSE_SCLK, MOUSE_SDIO, MOUSE_NCS, MOUSE_NRST, 500);
+MCS12085 mouse(MOUSE_SCLK, MOUSE_SDIO);
 
 MFRC522 mfrc522(RFID_SDA, RFID_RST);  // Create MFRC522 instance
 
 
 long distance;
+char location_uid[40];
 
 int current_spi = -1; // -1 - NOT STARTED   0 - RFID   1 - LORA
 char buffer[80];
@@ -83,6 +86,8 @@ void array_to_string(byte array[], unsigned int len, char buffer[])
 
 void setup()
 {
+  strcpy(location_uid, "?");
+
   Serial.begin(115200);
   delay(100);
 
@@ -101,8 +106,9 @@ void setup()
   display.drawString(0, 0, "IMOB VEHICLE READY");
   display.display();
 
-  mouse.reset();
-  mouse.identify();
+  // mouse.reset();
+  // mouse.identify();
+  mouse.init();
   delay(100);
 
   // SPI.begin();                       // Init SPI bus
@@ -112,21 +118,56 @@ void setup()
   Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 }
 
+
+void info() {
+  display.clear();
+
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "IMOB");
+  display.drawLine(0,11, 128,11);
+
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 16, location_uid);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(90, 16, itoa(distance/10, buffer, 10));
+  display.display();
+}
+
+
 long last_mouse = 0;
+long last_info = 0;
 
 void loop()
 {
   long now = millis();
 
   if (now - last_mouse > 50) {
-    mouse.readBurst();
-    if (mouse.motion != 0) {
-      // mouse.printDelta();
-      mouse.printAll();
-      distance += sqrt(mouse.dx*mouse.dx + mouse.dy*mouse.dy);
-      last_mouse = now;
-      // Serial.println(distance);
-    }
+    last_mouse = now;
+
+    // calling these in quick succession seems to work faster
+    int x = mouse.read_x(); // distance moved in dots (-127 to 128)
+    int y = mouse.read_y(); // distance moved in dots (-127 to 128)
+    // Serial.print("dx=");
+    // Serial.print(xVal);
+    // Serial.print(", dy=");
+    // Serial.println(yVal); 
+    distance += sqrt(x*x + y*y);
+    // Serial.println(distance);
+
+    // mouse.readBurst();
+    // if (mouse.motion != 0) {
+    //   // mouse.printDelta();
+    //   mouse.printAll();
+    //   distance += sqrt(mouse.dx*mouse.dx + mouse.dy*mouse.dy);
+      
+    //   // Serial.println(distance);
+    // }
+  }
+
+
+  if (now - last_info > 200) {
+    last_info = now;
+    info();
   }
 
   // delay(50);
@@ -149,9 +190,5 @@ void loop()
   // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
   mfrc522.PICC_HaltA();
 
-  array_to_string(mfrc522.uid.uidByte, 4, buffer);
-  display.clear();
-  display.drawString(0, 0, "IMOB VEHICLE READY");
-  display.drawString(0, 16, buffer);
-  display.display();
+  array_to_string(mfrc522.uid.uidByte, 4, location_uid);
 }
