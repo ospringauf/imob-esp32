@@ -31,15 +31,27 @@ class ADNS5020 {
   public:
     ADNS5020(uint8_t sclk, uint8_t sdio, uint8_t ncs, uint8_t nreset, int cpi);
 
-    int8_t motion;
+    // uint8_t motion;
+    // int dx;
+    // int dy;
+    // uint8_t squal;
+    // uint8_t shutter_upper;
+    // uint8_t shutter_lower;
+    // uint8_t max_pixel;
+    // uint8_t pixel_sum;
+    // uint8_t frame[ADNS5020_FRAME_LENGTH];
+    
+    byte motion; // motion flag is in MSB(!)
     int8_t dx;
     int8_t dy;
-    uint8_t squal;
-    uint8_t shutter_upper;
-    uint8_t shutter_lower;
-    uint8_t max_pixel;
-    uint8_t pixel_sum;
-    uint8_t frame[ADNS5020_FRAME_LENGTH];
+    byte squal;
+    byte shutter_upper;
+    byte shutter_lower;
+    byte max_pixel;
+    byte pixel_sum;
+    byte frame[ADNS5020_FRAME_LENGTH];
+
+
     int factor;
     int x;
     int y;
@@ -83,6 +95,11 @@ class ADNS5020 {
 
     void enable();  // NCS=high
     void disable(); // NCS=low
+
+    void setDelta(int8_t rx, int8_t ry) {
+      dx = rx;
+      dy = ry;
+    }
 
     void pushbyte(uint8_t data);
     byte pullbyte();

@@ -126,8 +126,9 @@ void ADNS5020::readDelta()
 {
   enable();
   motion = readRegister(ADNS5020_REG_MOTION); // Freezes DX and DY until they are read or MOTION is read again.
-  dx = factor * readRegister(ADNS5020_REG_DELTA_X);
-  dy = factor * readRegister(ADNS5020_REG_DELTA_Y);
+  setDelta(readRegister(ADNS5020_REG_DELTA_X), readRegister(ADNS5020_REG_DELTA_Y));
+  // dx = factor * readRegister(ADNS5020_REG_DELTA_X);
+  // dy = factor * readRegister(ADNS5020_REG_DELTA_Y);
   squal = readRegister(ADNS5020_REG_SQUAL);
   updatePosition();
   disable();
@@ -141,8 +142,9 @@ void ADNS5020::readBurst() {
     pushbyte(ADNS5020_REG_BURST_MODE);
     delayMicroseconds(4); // tSRAD= 4us min.
 
-    dx = factor * pullbyte();
-    dy = factor * pullbyte();
+    setDelta(pullbyte(), pullbyte());
+    // dx = factor * pullbyte();
+    // dy = factor * pullbyte();
     squal = pullbyte();
     shutter_upper = pullbyte();
     shutter_lower = pullbyte();
@@ -273,51 +275,37 @@ void ADNS5020::resolution(int cpi) {
 }
 
 
-// int8_t ADNS5020::pullbyte() {
-//   pinMode(_sdio, INPUT);
-
-//   delayMicroseconds(ADNS5020_DELAY); // tHOLD = 100us min.
-
-//   int8_t res = 0;
-//   for (uint8_t i = 128; i > 0 ; i >>= 1) {
-//     digitalWrite(_sclk, LOW);
-//     res |= i * digitalRead(_sdio);
-//     delayMicroseconds(100);
-//     digitalWrite(_sclk, HIGH);
-//   }
-
-//   return res;
-// }
-
-
-byte ADNS5020::pullbyte() {
+byte ADNS5020::pullbyte() { 
   pinMode(_sdio, INPUT);
 
-  delayMicroseconds(ADNS5020_DELAY); // tHOLD = 100us min.
-
   byte res = 0;
-  for (int i=0; i<8; ++i) {
-    digitalWrite(_sclk, LOW);
-    res += digitalRead(_sdio);
-    res = res << 1;
-    delayMicroseconds(ADNS5020_DELAY);
+  for (byte i = 128; i > 0 ; i >>= 1) {
+    digitalWrite(_sclk, LOW); // sensor outputs on falling edge
+    delayMicroseconds(T_DLY_SDIO); // wait for data ready
+    res |= i * digitalRead(_sdio);
     digitalWrite(_sclk, HIGH);
+    delayMicroseconds(T_HOLD); //x - 0.5us HOLD
   }
+
+  delayMicroseconds(T_SRX);
 
   return res;
 }
 
-void ADNS5020::pushbyte(uint8_t data) {
+
+
+void ADNS5020::pushbyte(byte data) {
+
   pinMode (_sdio, OUTPUT);
 
-  delayMicroseconds(ADNS5020_DELAY); // tHOLD = 100us min.
-
-  for (uint8_t i = 128; i > 0 ; i >>= 1) {
+  for (byte i = 128; i > 0 ; i >>= 1) {
     digitalWrite(_sclk, LOW);
     digitalWrite(_sdio, (data & i) != 0 ? HIGH : LOW);
-    delayMicroseconds(ADNS5020_DELAY);
-    digitalWrite(_sclk, HIGH);
+    delayMicroseconds(T_SETUP); 
+    digitalWrite(_sclk, HIGH); // sensor reads on rising clock
+    delayMicroseconds(T_HOLD); 
   }
+  pinMode(_sdio, INPUT);
 }
 
 

@@ -99,7 +99,6 @@ void setup()
   display.setTextAlignment(TEXT_ALIGN_LEFT);
 
   display.drawString(0, 0, "IMOB VEHICLE READY");
-  // display.drawString(0, 10, "GO");
   display.display();
 
   mouse.reset();
@@ -121,38 +120,38 @@ void loop()
 
   if (now - last_mouse > 50) {
     mouse.readBurst();
-    if (mouse.motion) {
+    if (mouse.motion != 0) {
       // mouse.printDelta();
-      // mouse.printAll();
+      mouse.printAll();
       distance += sqrt(mouse.dx*mouse.dx + mouse.dy*mouse.dy);
       last_mouse = now;
-      Serial.println(distance);
+      // Serial.println(distance);
     }
   }
 
   // delay(50);
 
-  // spi_select(0);
-  // // Look for new cards
-  // if (!mfrc522.PICC_IsNewCardPresent())
-  // {
-  //   return;
-  // }
+  spi_select(0);
+  // Look for new cards
+  if (!mfrc522.PICC_IsNewCardPresent())
+  {
+    return;
+  }
 
-  // // Select one of the cards
-  // if (!mfrc522.PICC_ReadCardSerial())
-  // {
-  //   return;
-  // }
+  // Select one of the cards
+  if (!mfrc522.PICC_ReadCardSerial())
+  {
+    return;
+  }
 
-  // // Dump debug info about the card; PICC_HaltA() is automatically called
-  // // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
-  // // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
-  // mfrc522.PICC_HaltA();
+  // Dump debug info about the card; PICC_HaltA() is automatically called
+  // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+  // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
+  mfrc522.PICC_HaltA();
 
-  // array_to_string(mfrc522.uid.uidByte, 4, buffer);
-  // display.clear();
-  // display.drawString(0, 0, "IMOB VEHICLE READY");
-  // display.drawString(0, 16, buffer);
-  // display.display();
+  array_to_string(mfrc522.uid.uidByte, 4, buffer);
+  display.clear();
+  display.drawString(0, 0, "IMOB VEHICLE READY");
+  display.drawString(0, 16, buffer);
+  display.display();
 }
