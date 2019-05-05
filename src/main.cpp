@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include "MCS12085.h"
+#include <WiFi.h>
 
 
 // RFID with MFRC-522
@@ -40,6 +41,16 @@
 #define SPI_RFID 0
 #define SPI_LORA 1
 
+// some colored RFID location tags
+#define LOC_START   0x0
+#define LOC_YELLOW  0xBC325E03
+#define LOC_RED     0x224016D0
+#define LOC_GREEN   0xACA2Ce03
+#define LOC_BLUE    0X7ED6B912
+#define LOC_GRAY    0xEC05D503
+#define LOC_BLACK   0x1CD9CE03  
+#define NUM_TAGS 6
+
 SSD1306 display(OLED_I2C_ADDR, OLED_SDA, OLED_SCL);
 
 // mouse sensor
@@ -50,11 +61,54 @@ MFRC522 mfrc522(RFID_SDA, RFID_RST);
 
 
 long distance;
-char location_uid[40];
+ulong location = LOC_START; // 32bit RFID UID of last seen tag
+ulong destination = LOC_START;
 
 int current_spi = SPI_NONE; 
 char buffer[80];
+bool info_update = false; // display update flag
 
+const char *vehicle_id = "IMOB-A";
+const char *color[] = { "START", "YELLOW", "RED", "GREEN", "BLUE", "GRAY", "BLACK" };
+const ulong tags[] = { LOC_START, LOC_YELLOW, LOC_RED, LOC_GREEN, LOC_BLUE, LOC_GRAY, LOC_BLACK };
+
+wl_status_t wifi_status = WL_DISCONNECTED;
+
+
+const char* uid_to_color(ulong uid) 
+{
+  for (int i=0; i<=NUM_TAGS; ++i)
+    if (uid == tags[i])
+      return color[i];
+  return "?";
+}
+
+const ulong color_to_uid(const char* col) 
+{
+  for (int i=0; i<=NUM_TAGS; ++i)
+    if (strcmp(col, color[i]) == 0)
+      return tags[i];
+  return 0;
+}
+
+// check if we have arrived at destination
+// set a new (random) destination
+void check_location() 
+{  
+  if (location == destination) {
+    ulong new_dest = destination;
+    while (new_dest == destination) 
+      new_dest = tags[1 + random(NUM_TAGS)];
+    destination = new_dest;
+    distance = 0;
+    info_update = true;
+
+    // Serial.print("new destination: "); Serial.println(uid_to_color(destination));
+  }
+}
+
+
+// switch SPI config on-the-fly
 void spi_select(int which) {
      if (which == current_spi) return;
      SPI.end();
@@ -73,24 +127,73 @@ void spi_select(int which) {
      current_spi = which;
 }
 
-// convert byte array to hex string
-void array_to_string(byte array[], unsigned int len, char buffer[])
+// convert 4-byte array to 32bit long
+long uid_to_long(byte array[]) 
 {
-    for (unsigned int i = 0; i < len; i++)
-    {
-        byte nib1 = (array[i] >> 4) & 0x0F;
-        byte nib2 = (array[i] >> 0) & 0x0F;
-        buffer[i*2+0] = nib1  < 0xA ? '0' + nib1  : 'A' + nib1  - 0xA;
-        buffer[i*2+1] = nib2  < 0xA ? '0' + nib2  : 'A' + nib2  - 0xA;
-    }
-    buffer[len*2] = '\0';
+  long l = array[0];
+  for (int i=1; i<4; ++i) {
+    l = l<<8;
+    l |= array[i];
+  }
+  return l;
+}
+
+// update display
+void info() {
+  display.clear();
+  int y = 0;
+
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, y, vehicle_id);
+  //display.drawString(100, 0, itoa(wifi_status, buffer, 10));
+  display.drawString(43, y, WiFi.localIP().toString());
+  // display.drawLine(0,11, 128,11);
+
+  y = 43;
+  // display.setFont(ArialMT_Plain_16);
+  display.drawString(0, y, "@");
+  // display.drawString(20, y, location_uid);
+  //display.drawString(20, y, itoa(location, buffer, 16));
+  display.drawString(20, y, uid_to_color(location));
+
+  // display.setFont(ArialMT_Plain_10);
+  long mm = distance / 20; // travelled distence in mm
+  display.drawString(90, y, itoa(mm, buffer, 10)); 
+
+  y = 53;
+  display.drawString(0, y, ">>");
+  display.drawString(20, y, uid_to_color(destination));
+  display.display();
+}
+
+
+void wifi_connect() {
+  wifi_status = WiFi.begin("ssid", "pwd");
+  info();
+
+  int retry = 20;
+  while ((wifi_status = WiFi.status()) != WL_CONNECTED && retry > 0)
+  {
+    Serial.print(".");
+    info();
+    retry--;
+    delay(500);
+  }
+
+  if (retry == 0)
+  {
+    Serial.println("WiFi connection failed");
+  } else {
+    Serial.println("WiFi connected"); 
+  }
+  Serial.print("IP: "); Serial.println(WiFi.localIP());
+
+  info();
 }
 
 
 void setup()
 {
-  strcpy(location_uid, "?");
-
   Serial.begin(115200);
   delay(100);
 
@@ -112,7 +215,7 @@ void setup()
   // SPI.begin();                       // Init SPI bus
   spi_select(SPI_RFID);
   delay(30);
-  mfrc522.PCD_Init();                // Init MFRC522
+  mfrc522.PCD_Init();
 
   // retry?
   if (mfrc522.PCD_ReadRegister(mfrc522.VersionReg) == 0) {
@@ -124,34 +227,24 @@ void setup()
   // Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 
   display.display();
+
+  check_location();
+
+  // wifi_connect();
 }
 
 
-void info() {
-  display.clear();
-
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "imob");
-  display.drawLine(0,11, 128,11);
-
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(0, 16, location_uid);
-  display.setFont(ArialMT_Plain_10);
-  long mm = distance / 20; // travelled distence in mm
-  display.drawString(90, 16, itoa(mm, buffer, 10)); 
-  display.display();
-}
 
 
 long last_mouse = 0;
 long last_info = 0;
-bool info_update = false;
 
 void loop()
 {
   long now = millis();
 
-  if (now - last_mouse > 50) {
+  // mouse position update
+  if (now - last_mouse > 30) {
     last_mouse = now;
 
     // calling these in quick succession seems to work faster
@@ -159,9 +252,23 @@ void loop()
     int y = mouse.read_y(); // distance moved in dots (-127 to 128)
     double delta = sqrt(x*x + y*y);
     distance += delta;
-    info_update |= (delta > 0);
-    // Serial.println(distance);
+    info_update |= (delta > 0);  
+  }
 
+
+  spi_select(SPI_RFID);
+  
+  // Look for new cards
+  if (mfrc522.PICC_IsNewCardPresent())
+  if (mfrc522.PICC_ReadCardSerial())
+  {
+    // Dump debug info about the card; PICC_HaltA() is automatically called
+    // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+    // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
+    mfrc522.PICC_HaltA();
+    location = uid_to_long(mfrc522.uid.uidByte);
+    check_location();
+    info_update = true;
   }
 
 
@@ -174,36 +281,4 @@ void loop()
 
   // delay(50);
 
-  spi_select(SPI_RFID);
-  
-  // Look for new cards
-  if (mfrc522.PICC_IsNewCardPresent())
-  if (mfrc522.PICC_ReadCardSerial())
-  {
-    // Dump debug info about the card; PICC_HaltA() is automatically called
-    // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
-    // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
-    mfrc522.PICC_HaltA();
-    array_to_string(mfrc522.uid.uidByte, 4, location_uid);
-    info_update = true;
-  }
-
-  // // Look for new cards
-  // if (!mfrc522.PICC_IsNewCardPresent())
-  // {
-  //   return;
-  // }
-
-  // // Select one of the cards
-  // if (!mfrc522.PICC_ReadCardSerial())
-  // {
-  //   return;
-  // }
-
-  // // Dump debug info about the card; PICC_HaltA() is automatically called
-  // // mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
-  // // mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
-  // mfrc522.PICC_HaltA();
-
-  // array_to_string(mfrc522.uid.uidByte, 4, location_uid);
 }
