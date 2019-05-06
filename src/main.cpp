@@ -43,12 +43,19 @@
 
 // some colored RFID location tags
 #define LOC_START   0x0
-#define LOC_YELLOW  0xBC325E03
-#define LOC_RED     0x224016D0
-#define LOC_GREEN   0xACA2Ce03
-#define LOC_BLUE    0X7ED6B912
-#define LOC_GRAY    0xEC05D503
-#define LOC_BLACK   0x1CD9CE03  
+// #define LOC_YELLOW  0xBC325E03
+// #define LOC_RED     0x224016D0
+// #define LOC_GREEN   0xACA2Ce03
+// #define LOC_BLUE    0X7ED6B912
+// #define LOC_GRAY    0xEC05D503
+// #define LOC_BLACK   0x1CD9CE03  
+#define LOC_YELLOW  0x4c645b03
+#define LOC_RED     0x823e77d0
+#define LOC_GREEN   0xec85ce03
+#define LOC_BLUE    0Xce04ba12
+#define LOC_GRAY    0x2c31d403
+#define LOC_BLACK   0x5c34ca03  
+
 #define NUM_TAGS 6
 
 SSD1306 display(OLED_I2C_ADDR, OLED_SDA, OLED_SCL);
@@ -80,7 +87,7 @@ const char* uid_to_color(ulong uid)
   for (int i=0; i<=NUM_TAGS; ++i)
     if (uid == tags[i])
       return color[i];
-  return "?";
+  return itoa(uid, buffer, 16);
 }
 
 const ulong color_to_uid(const char* col) 

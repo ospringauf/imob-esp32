@@ -2,5 +2,9 @@
     "terminal.integrated.env.linux": {
         "PATH": "/home/oliver/.platformio/penv/bin:/home/oliver/.platformio/penv:/home/oliver/bin:/opt/ros/melodic/bin:/home/oliver/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin:/usr/lib/jvm/java-8-oracle/bin:/usr/lib/jvm/java-8-oracle/db/bin:/usr/lib/jvm/java-8-oracle/jre/bin",
         "PLATFORMIO_CALLER": "vscode"
+    },
+    "terminal.integrated.env.windows": {
+        "PATH": "C:\\Users\\Q446360\\.platformio\\penv\\Scripts;C:\\Users\\Q446360\\.platformio\\penv;C:\\Program Files\\Common Files\\Microsoft Shared\\Microsoft Online Services;C:\\Program Files (x86)\\Common Files\\Microsoft Shared\\Microsoft Online Services;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;c:\\Program Files\\PuTTY\\;C:\\Users\\Q446360\\AppData\\Local\\Microsoft\\WindowsApps;C:\\develop\\openjdk18\\bin;C:\\Users\\Q446360\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\develop\\apache-maven-3.5.3\\bin;;C:\\Program Files\\Common Files\\Microsoft Shared\\Microsoft Online Services;C:\\Program Files (x86)\\Common Files\\Microsoft Shared\\Microsoft Online Services;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;c:\\Program Files\\PuTTY\\;C:\\Users\\Q446360\\AppData\\Local\\Microsoft\\WindowsApps;C:\\develop\\openjdk18\\bin;C:\\Users\\Q446360\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\develop\\apache-maven-3.5.3\\bin;",
+        "PLATFORMIO_CALLER": "vscode"
     }
 }
